@@ -1,10 +1,12 @@
-FROM amazonlinux:2.0.20190508 as lobuild
+# FROM amazonlinux:2.0.20190508 as lobuild
+FROM amazonlinux:latest as lobuild
 
 # see https://stackoverflow.com/questions/2499794/how-to-fix-a-locale-setting-warning-from-perl
 ENV LC_CTYPE=en_US.UTF-8
 ENV LC_ALL=en_US.UTF-8
 
-ENV LIBREOFFICE_VERSION=6.2.1.2
+# ENV LIBREOFFICE_VERSION=6.2.1.2
+ENV LIBREOFFICE_VERSION=7.3.0.1
 
 # install basic stuff required for compilation
 RUN yum install -y yum-utils \
@@ -20,7 +22,8 @@ RUN yum install -y yum-utils \
     gmp-devel \
     google-crosextra-caladea-fonts \
     google-crosextra-carlito-fonts \
-    gperf \
+#    gperf \   required version installed manually
+	wget \
     icu \
     libcurl-devel \
     liberation-sans-fonts \
@@ -43,10 +46,28 @@ RUN yum install -y yum-utils \
     nss-devel \
     openssl-devel \
     perl-Digest-MD5 \
-    python34-devel \
+    python3-devel \
+    python3 \
     which # Used by autogen.sh
 
 RUN yum groupinstall -y "Development Tools"
+
+# Libreoffice core requires gperf 3.1 :
+RUN wget http://ftp.gnu.org/pub/gnu/gperf/gperf-3.1.tar.gz
+RUN tar xzvf gperf-3.1.tar.gz
+WORKDIR "/gperf-3.1"
+RUN ./configure --prefix=/usr --docdir=/usr/share/doc/gperf-3.1
+RUN make
+RUN make install
+WORKDIR "/"
+
+# Libreoffice core requires at least flex-2.6.0
+RUN wget https://github.com/westes/flex/files/981163/flex-2.6.4.tar.gz
+RUN tar xzvf flex-2.6.4.tar.gz
+WORKDIR "/flex-2.6.4"
+RUN ./autogen.sh
+RUN ./configure && make && make install
+WORKDIR "/"
 
 # fetch the LibreOffice source
 RUN cd /tmp \
@@ -78,12 +99,12 @@ RUN ./autogen.sh \
     --disable-extension-update \
     --disable-firebird-sdbc \
     --disable-gio \
-    --disable-gstreamer-0-10 \
+#    --disable-gstreamer-0-10 \
     --disable-gstreamer-1-0 \
-    --disable-gtk \
+#    --disable-gtk \
     --disable-gtk3 \
     --disable-introspection \
-    --disable-kde4 \
+#    --disable-kde4 \
     --disable-largefile \
     --disable-lotuswordpro \
     --disable-lpsolve \
@@ -120,6 +141,10 @@ RUN ./autogen.sh \
 # and replace "#if !defined MACOSX && !defined _WIN32" with "#if defined MACOSX && !defined _WIN32"
 RUN sed -i '609s/#if !defined MACOSX && !defined _WIN32/#if defined MACOSX \&\& !defined _WIN32/' vcl/qa/cppunit/pdfexport/pdfexport.cxx
 
+# disable root check
+RUN sed -i 's/exit 1; \\/echo; \\/' Makefile
+# RUN cat Makefile > /tmp/logs.txt
+
 # this will take 30 minutes to 2 hours to compile, depends on your machine
 RUN make
 
@@ -142,7 +167,7 @@ RUN echo "hello world" > a.txt \
 
 RUN tar -cvf /tmp/lo.tar instdir/
 
-FROM amazonlinux:2.0.20190508 as brotli
+FROM amazonlinux:latest as brotli
 
 ENV BROTLI_VERSION=1.0.7
 
@@ -162,6 +187,6 @@ COPY --from=lobuild /tmp/lo.tar .
 
 RUN brotli --best /tmp/lo.tar && zip -r layers.zip lo.tar.br
 
-FROM amazonlinux:2.0.20190508
+FROM amazonlinux:latest
 
 COPY --from=brotli /tmp/layers.zip /tmp
