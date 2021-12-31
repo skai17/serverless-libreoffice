@@ -5,4 +5,4 @@ services:
     build: .
     volumes:
       - .:/host
-    command: 'cp /tmp/layers.zip /host'
+    command: 'cp /tmp/lo.tar /host'

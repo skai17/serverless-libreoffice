@@ -167,26 +167,26 @@ RUN echo "hello world" > a.txt \
 
 RUN tar -cvf /tmp/lo.tar instdir/
 
-FROM amazonlinux:latest as brotli
-
-ENV BROTLI_VERSION=1.0.7
-
-WORKDIR /tmp
-
-# Compile Brotli
-RUN yum install -y make zip unzip bc autoconf automake libtool \
-    && curl -LO https://github.com/google/brotli/archive/v${BROTLI_VERSION}.zip \
-    && unzip v${BROTLI_VERSION}.zip \
-    && cd brotli-${BROTLI_VERSION} \
-    && ./bootstrap \
-    && ./configure \
-    && make \
-    && make install
-
-COPY --from=lobuild /tmp/lo.tar .
-
-RUN brotli --best /tmp/lo.tar && zip -r layers.zip lo.tar.br
-
-FROM amazonlinux:latest
-
-COPY --from=brotli /tmp/layers.zip /tmp
+#FROM amazonlinux:latest as brotli
+#
+#ENV BROTLI_VERSION=1.0.7
+#
+#WORKDIR /tmp
+#
+## Compile Brotli
+#RUN yum install -y make zip unzip bc autoconf automake libtool \
+#    && curl -LO https://github.com/google/brotli/archive/v${BROTLI_VERSION}.zip \
+#    && unzip v${BROTLI_VERSION}.zip \
+#    && cd brotli-${BROTLI_VERSION} \
+#    && ./bootstrap \
+#    && ./configure \
+#    && make \
+#    && make install
+#
+#COPY --from=lobuild /tmp/lo.tar .
+#
+#RUN brotli --best /tmp/lo.tar && zip -r layers.zip lo.tar.br
+#
+#FROM amazonlinux:latest
+#
+#COPY --from=brotli /tmp/layers.zip /tmp
